@@ -85,7 +85,27 @@ def filterOutWatched(items, watched):
 	return result
 
 
-if __name__=="__main__":
+def formatEpisodeSet(epSet):
+	if len(epSet) == 1:
+		return epSet.pop()
+	epList = sorted(epSet)
+	# epListStr = " ".join(epList)
+	return epList[0] + ".." + epList[-1]
+
+
+def getEpisodesByName(items):
+	byName = {}
+	for item in items:
+		name = item["name"]
+		ep = item["ep"]
+		if name not in byName:
+			byName[name] = set([ep])
+			continue
+		byName[name].add(ep)
+	return byName
+
+
+def main():
 	with open("top.html") as fp:
 		htmlStr = fp.read()
 	items = parsePage(htmlStr)
@@ -96,16 +116,12 @@ if __name__=="__main__":
 	# from pprint import pprint ; pprint(watched)
 
 	items = filterOutWatched(items, watched)
+	byName = getEpisodesByName(items)
 
-	byName = {}
-	for item in items:
-		name = item["name"]
-		ep = item["ep"]
-		if name not in byName:
-			byName[name] = set([ep])
-			continue
-		byName[name].add(ep)
-
-	for name, epSet in byName.items():
-		epListStr = " ".join(sorted(epSet))
+	for name, epSet in sorted(byName.items()):
+		epListStr = formatEpisodeSet(epSet)
 		print(f"{name} - {epListStr}")
+
+
+if __name__=="__main__":
+	main()
