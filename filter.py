@@ -68,32 +68,44 @@ def parseWatchedFile(fname):
 	return result
 
 
-
-if __name__=="__main__":
-	with open("top.html") as fp:
-		htmlStr = fp.read()
-	items = parsePage(htmlStr)
-
-	watched = parseWatchedFile("watched.txt")
-
-	#from pprint import pprint ; pprint(watched)
-
+def filterOutWatched(items, watched):
+	result = []
 	for item in items:
 		name = item["name"]
 		ep = item["ep"]
 		if name not in watched:
-			print(f"{name} - {ep}")
+			result.append(item)
 			continue
 		watchedEp = watched[name]
 		if watchedEp is None:
 			continue
 		if ep > watchedEp:
-			print(f"{name} - {ep}")
+			result.append(item)
 			continue
+	return result
 
 
-
+if __name__=="__main__":
+	with open("top.html") as fp:
+		htmlStr = fp.read()
+	items = parsePage(htmlStr)
 	# from json import dumps
-	# print(dumps(allEpisodes, indent="    "))
+	# print(dumps(items, indent="    "))
 
+	watched = parseWatchedFile("watched.txt")
+	# from pprint import pprint ; pprint(watched)
 
+	items = filterOutWatched(items, watched)
+
+	byName = {}
+	for item in items:
+		name = item["name"]
+		ep = item["ep"]
+		if name not in byName:
+			byName[name] = set([ep])
+			continue
+		byName[name].add(ep)
+
+	for name, epSet in byName.items():
+		epListStr = " ".join(sorted(epSet))
+		print(f"{name} - {epListStr}")
