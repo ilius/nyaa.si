@@ -4,6 +4,11 @@
 
 import re
 from lxml.html import fromstring
+import json
+
+with open("name_mapping.json") as _file:
+	nameMapping = json.load(_file)
+
 
 # "[SubsPlease] Tomodachi Game - 09 (1080p) [BFD8B19A].mkv"
 # {"sub": "SubsPlease", "name": "Tomodachi Game",
@@ -29,14 +34,24 @@ def parsePage(htmlStr: str) -> "List[Dict[str, str]]":
 		#bad title: '[Ohys-Raws] Gaikotsu Kishi-sama, Tadaima Isekai e Odekake-chuu - 09 (AT-X 1280x720 x264 AAC).mp4'
 		#bad title: '[SlyFox] Summertime Rendering (Summer Time Render) - 07 [297E6E53].mkv
 		groups = m.groups()
+		sub = groups[0].strip("[] ") if groups[0] else ""
+		name = groups[1]
+		ep = groups[2]
+		res = groups[3]
+		extra = groups[4]
+		_format = groups[5]
+		if ep.startswith("S01E"):
+			ep = ep[len("S01E"):]
+		if name in nameMapping:
+			name = nameMapping[name]
 		result.append({
 			"title": title,
-			"sub": groups[0].strip("[] ") if groups[0] else "",
-			"name": groups[1],
-			"ep": groups[2],
-			"res": groups[3],
-			"extra": groups[4],
-			"format": groups[5]
+			"sub": sub,
+			"name": name,
+			"ep": ep,
+			"res": res,
+			"extra": extra,
+			"format": _format,
 		})
 	return result
 
@@ -109,8 +124,7 @@ def main():
 	with open("top.html") as fp:
 		htmlStr = fp.read()
 	items = parsePage(htmlStr)
-	# from json import dumps
-	# print(dumps(items, indent="    "))
+	# print(json.dumps(items, indent="    "))
 
 	watched = parseWatchedFile("watched.txt")
 	# from pprint import pprint ; pprint(watched)
