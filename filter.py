@@ -1,7 +1,5 @@
 #!/usr/bin/python3
 
-# URL: https://nyaa.si/?s=seeders&o=desc
-
 import re
 from lxml.html import fromstring
 import json
@@ -26,13 +24,14 @@ def parsePage(htmlStr: str) -> "List[Dict[str, str]]":
 		except ValueError:
 			continue
 		title = a.attrib["title"]
-		# m = re.match("\[(.*)\] (.*) - ([0-9]+) \(([0-9]+p)\)([^.]*)\.([a-zA-Z]+)", title)
-		m = re.match("(\[.*\] )?(.*) - ([0-9]+|S[0-9][0-9]E[0-9][0-9]) [- ]*[\\(\\[]?([0-9]+p)?[\\)\\]]?([^.]*)\.([a-zA-Z]+)", title)
+		m = re.match(
+			"(\[.*\] )?(.*) - ([0-9]+|S[0-9][0-9]E[0-9][0-9])"
+			" [- ]*[\\(\\[]?([0-9]+p)?[\\)\\]]?([^.]*)\.([a-zA-Z]+)",
+			title,
+		)
 		if m is None:
 			print(f"bad title: {title!r}")
 			continue
-		#bad title: '[Ohys-Raws] Gaikotsu Kishi-sama, Tadaima Isekai e Odekake-chuu - 09 (AT-X 1280x720 x264 AAC).mp4'
-		#bad title: '[SlyFox] Summertime Rendering (Summer Time Render) - 07 [297E6E53].mkv
 		groups = m.groups()
 		sub = groups[0].strip("[] ") if groups[0] else ""
 		name = groups[1]
@@ -104,7 +103,6 @@ def formatEpisodeSet(epSet):
 	if len(epSet) == 1:
 		return epSet.pop()
 	epList = sorted(epSet)
-	# epListStr = " ".join(epList)
 	return epList[0] + ".." + epList[-1]
 
 
@@ -127,7 +125,7 @@ def main():
 	# print(json.dumps(items, indent="    "))
 
 	watched = parseWatchedFile("watched.txt")
-	# from pprint import pprint ; pprint(watched)
+	# print(json.dumps(watched, indent="    "))
 
 	items = filterOutWatched(items, watched)
 	byName = getEpisodesByName(items)
