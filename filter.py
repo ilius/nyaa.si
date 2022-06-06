@@ -58,7 +58,12 @@ def parseWatchedFile(fname):
 	result = {}  # Dict[str, Optional[str]]
 	with open(fname) as _file:
 		for line in _file:
-			parts = line.strip().split("\t")
+			if line.startswith("#"):
+				continue
+			line = line.strip().split("#")[0]
+			if not line:
+				continue
+			parts = line.split("\t")
 			if len(parts) == 0:
 				continue
 			name = parts[0]
