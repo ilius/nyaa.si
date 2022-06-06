@@ -103,6 +103,8 @@ def formatEpisodeSet(epSet):
 	if len(epSet) == 1:
 		return epSet.pop()
 	epList = sorted(epSet)
+	if epList[0] == "01":
+		return ".." + epList[-1]
 	return epList[0] + ".." + epList[-1]
 
 
