@@ -3,9 +3,21 @@
 import re
 from lxml.html import fromstring
 import json
+from os.path import isfile
 
 with open("name_mapping.json") as _file:
 	nameMapping = json.load(_file)
+
+with open("name_english.json") as _file:
+	nameTranslation = json.load(_file)
+
+
+
+episodeTitleRE = re.compile(
+	"(\[.*\] )?(.*) - ([0-9]+|S[0-9][0-9]E[0-9][0-9])"
+	" [- ]*[\\(\\[]?([0-9]+p)?[\\)\\]]?([^.]*)\.([a-zA-Z]+)",
+)
+nameSeasonRE = re.compile("(.*) (S[0-9]+)")
 
 
 # "[SubsPlease] Tomodachi Game - 09 (1080p) [BFD8B19A].mkv"
@@ -24,13 +36,9 @@ def parsePage(htmlStr: str) -> "List[Dict[str, str]]":
 		except ValueError:
 			continue
 		title = a.attrib["title"]
-		m = re.match(
-			"(\[.*\] )?(.*) - ([0-9]+|S[0-9][0-9]E[0-9][0-9])"
-			" [- ]*[\\(\\[]?([0-9]+p)?[\\)\\]]?([^.]*)\.([a-zA-Z]+)",
-			title,
-		)
+		m = episodeTitleRE.match(title)
 		if m is None:
-			print(f"bad title: {title!r}")
+			print(f"--- bad title: {title!r}")
 			continue
 		groups = m.groups()
 		sub = groups[0].strip("[] ") if groups[0] else ""
@@ -125,13 +133,33 @@ def getEpisodesByName(items):
 	return byName
 
 
+def formatTranslateName(name):
+	nameTr = nameTranslation.get(name, "")
+	if nameTr:
+		return f"{name} ({nameTr})"
+
+	m = nameSeasonRE.match(name)
+	if m:
+		nameNS = m.group(1)
+		nameTr = nameTranslation.get(nameNS, "")
+		if nameTr:
+			season = m.group(2)
+			return f"{nameNS} ({nameTr}) {season}"
+
+	return name
+
+
 def main():
 	with open("top.html") as fp:
 		htmlStr = fp.read()
 	items = parsePage(htmlStr)
 	# print(json.dumps(items, indent="    "))
 
-	watched = parseWatchedFile("watched.txt")
+	watchedFilePath = "watched.txt"
+	if isfile(watchedFilePath):
+		watched = parseWatchedFile(watchedFilePath)
+	else:
+		watched = {}
 	# print(json.dumps(watched, indent="    "))
 
 	items = filterOutWatched(items, watched)
@@ -139,6 +167,7 @@ def main():
 
 	for name, epSet in sorted(byName.items()):
 		epListStr = formatEpisodeSet(epSet)
+		name = formatTranslateName(name)
 		print(f"{name} - {epListStr}")
 
 
