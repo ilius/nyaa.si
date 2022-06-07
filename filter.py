@@ -4,6 +4,7 @@ import re
 from lxml.html import fromstring
 import json
 from os.path import isfile
+from datetime import datetime
 
 with open("name_mapping.json") as _file:
 	nameMapping = json.load(_file)
@@ -51,6 +52,13 @@ def parsePage(htmlStr: str) -> "List[Dict[str, str]]":
 			ep = ep[len("S01E"):]
 		if name in nameMapping:
 			name = nameMapping[name]
+
+		tr = a.getparent().getparent()
+		timeTd = tr.xpath('//td[@data-timestamp]')[0]
+		timestamp = int(timeTd.attrib["data-timestamp"])
+		# timeStr = timeTd.text  # in UTC
+		timeStr = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M')
+
 		result.append({
 			"title": title,
 			"sub": sub,
@@ -59,6 +67,8 @@ def parsePage(htmlStr: str) -> "List[Dict[str, str]]":
 			"res": res,
 			"extra": extra,
 			"format": _format,
+			"time_formatted": timeStr,
+			"timestamp": timestamp,
 		})
 	return result
 
@@ -127,9 +137,9 @@ def getEpisodesByName(items):
 		name = item["name"]
 		ep = item["ep"]
 		if name not in byName:
-			byName[name] = set([ep])
+			byName[name] = (item, set([ep]))
 			continue
-		byName[name].add(ep)
+		byName[name][1].add(ep)
 	return byName
 
 
@@ -165,10 +175,13 @@ def main():
 	items = filterOutWatched(items, watched)
 	byName = getEpisodesByName(items)
 
-	for name, epSet in sorted(byName.items()):
+	for name, (item, epSet) in sorted(byName.items()):
 		epListStr = formatEpisodeSet(epSet)
 		name = formatTranslateName(name)
-		print(f"{name} - {epListStr}")
+		time_formatted = item["time_formatted"]
+		sub = item["sub"]
+		# print(f"{time_formatted} [{sub}] {name} - {epListStr}")
+		print(f"[{sub}] {name} - {epListStr}")
 
 
 if __name__=="__main__":
