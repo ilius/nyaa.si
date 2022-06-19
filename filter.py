@@ -1,10 +1,14 @@
 #!/usr/bin/python3
 
 import re
+import os
+import sys
 from lxml.html import fromstring
 import json
 from os.path import isfile
 from datetime import datetime
+
+
 
 with open("name_mapping.json") as _file:
 	nameMapping = json.load(_file)
@@ -13,12 +17,23 @@ with open("name_english.json") as _file:
 	nameTranslation = json.load(_file)
 
 
+jsonMode = False
+if "--json" in sys.argv:
+	jsonMode = True
+
 
 episodeTitleRE = re.compile(
 	"(\[.*\] )?([^0-9]*?( S[0-9]+)? - )([0-9]+|S[0-9][0-9]E[0-9][0-9] )?"
-	"[- ]*[\\(\\[]?([0-9]+p)?[\\)\\]]?([^.]*?)(\\.[a-zA-Z]+)?",
+	"[- ]*[\\(\\[]?([0-9]+p)?[\\)\\]]?(.*)",
 )
 nameSeasonRE = re.compile("(.*) (S[0-9]+)")
+
+
+def error(msg):
+	if jsonMode:
+		print(json.dumps({"error": msg}, ensure_ascii=False))
+		return
+	print(f"--- {msg}", file=sys.stderr)
 
 
 # "[SubsPlease] Tomodachi Game - 09 (1080p) [BFD8B19A].mkv"
@@ -39,18 +54,14 @@ def parsePage(htmlStr: str) -> "List[Dict[str, str]]":
 		title = a.attrib["title"]
 		m = episodeTitleRE.match(title)
 		if m is None:
-			print(f"--- bad title: {title!r}")
+			error(f"bad title: {title}")
 			continue
-		# print(f"++ title: {title!r}")
 		groups = m.groups()
 		sub = groups[0].strip("[] ") if groups[0] else ""
 		name = groups[1].strip(" -")
 		ep = groups[3]
 		res = groups[4]
-		extra = groups[5]
-		_format = groups[6]
-		if _format:
-			_format = _format.lstrip(".")
+		extra = groups[5].strip()
 		if ep:
 			ep = ep.strip()
 			if ep.startswith("S01E"):
@@ -73,9 +84,9 @@ def parsePage(htmlStr: str) -> "List[Dict[str, str]]":
 			"ep": ep,
 			"res": res,
 			"extra": extra,
-			"format": _format,
 			"time_formatted": timeStr,
 			"timestamp": timestamp,
+			"groups": groups,
 		})
 	return result
 
@@ -96,7 +107,7 @@ def parseWatchedFile(fname):
 				result[name] = None
 				continue
 			if len(parts) != 2:
-				print(f"bad line: {line}")
+				error(f"bad line: {line}")
 				continue
 			epRange = parts[1]
 			if epRange.startswith(".."):
@@ -108,7 +119,7 @@ def parseWatchedFile(fname):
 				end = endStr.lstrip("E")
 				result[name] = end
 				continue
-			print(f"bad line: {line}")
+			error(f"bad line: {line}")
 	return result
 
 
@@ -187,8 +198,11 @@ def main():
 		name = formatTranslateName(name)
 		time_formatted = item["time_formatted"]
 		sub = item["sub"]
-		# print(f"{time_formatted} [{sub}] {name} - {epListStr}")
-		print(f"[{sub}] {name} - {epListStr}")
+		if jsonMode:
+			print(json.dumps(item, ensure_ascii=False))
+		else:
+			# print(f"{time_formatted} [{sub}] {name} - {epListStr}")
+			print(f"[{sub}] {name} - {epListStr}")
 
 
 if __name__=="__main__":
