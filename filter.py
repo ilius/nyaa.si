@@ -15,8 +15,8 @@ with open("name_english.json") as _file:
 
 
 episodeTitleRE = re.compile(
-	"(\[.*\] )?(.*) - ([0-9]+|S[0-9][0-9]E[0-9][0-9])"
-	" [- ]*[\\(\\[]?([0-9]+p)?[\\)\\]]?([^.]*)\.([a-zA-Z]+)",
+	"(\[.*\] )?([^0-9]*?( S[0-9]+)? - )([0-9]+|S[0-9][0-9]E[0-9][0-9] )?"
+	"[- ]*[\\(\\[]?([0-9]+p)?[\\)\\]]?([^.]*?)(\\.[a-zA-Z]+)?",
 )
 nameSeasonRE = re.compile("(.*) (S[0-9]+)")
 
@@ -41,15 +41,22 @@ def parsePage(htmlStr: str) -> "List[Dict[str, str]]":
 		if m is None:
 			print(f"--- bad title: {title!r}")
 			continue
+		# print(f"++ title: {title!r}")
 		groups = m.groups()
 		sub = groups[0].strip("[] ") if groups[0] else ""
-		name = groups[1]
-		ep = groups[2]
-		res = groups[3]
-		extra = groups[4]
-		_format = groups[5]
-		if ep.startswith("S01E"):
-			ep = ep[len("S01E"):]
+		name = groups[1].strip(" -")
+		ep = groups[3]
+		res = groups[4]
+		extra = groups[5]
+		_format = groups[6]
+		if _format:
+			_format = _format.lstrip(".")
+		if ep:
+			ep = ep.strip()
+			if ep.startswith("S01E"):
+				ep = ep[len("S01E"):]
+		else:
+			ep = "00"
 		if name in nameMapping:
 			name = nameMapping[name]
 
