@@ -32,27 +32,28 @@ nameSeasonRE = re.compile("(.*) (S[0-9]+)")
 
 # TODO: replace episodeTitleRE with a list of expressions with named groups
 
-def error(msg):
+
+def errorJson(msg, data, **kwargs):
+	data["error"] = msg
+	print(
+		json.dumps(
+			data,
+			ensure_ascii=False,
+			**kwargs
+		),
+		file=sys.stderr,
+	)
+
+
+def error(msg, **data):
 	if outMode == "json":
-		print(
-			json.dumps(
-				{"error": msg},
-				ensure_ascii=False,
-			),
-			file=sys.stderr,
-		)
+		errorJson(msg, data)
 		return
 	if outMode == "json-pretty":
-		print(
-			json.dumps(
-				{"error": msg},
-				ensure_ascii=False,
-				indent="    ",
-			),
-			file=sys.stderr,
-		)
+		errorJson(msg, data, indent="    ")
 		return
-	print(f"--- {msg}", file=sys.stderr)
+	valuesStr = ", ".join([repr(x) for x in data.values()])
+	print(f"--- {msg}: {valuesStr}", file=sys.stderr)
 
 
 # "[SubsPlease] Tomodachi Game - 09 (1080p) [BFD8B19A].mkv"
@@ -73,7 +74,7 @@ def parsePage(htmlStr: str) -> "List[Dict[str, str]]":
 		title = a.attrib["title"]
 		m = episodeTitleRE.match(title)
 		if m is None:
-			error(f"bad title: {title}")
+			error(f"bad title", title=title)
 			continue
 		groups = m.groups()
 		sub = groups[0].strip("[] ") if groups[0] else ""
@@ -126,7 +127,7 @@ def parseWatchedFile(fname):
 				result[name] = None
 				continue
 			if len(parts) != 2:
-				error(f"bad line: {line}")
+				error("bad line", line=line)
 				continue
 			epRange = parts[1]
 			if epRange.startswith(".."):
@@ -138,7 +139,7 @@ def parseWatchedFile(fname):
 				end = endStr.lstrip("E")
 				result[name] = end
 				continue
-			error(f"bad line: {line}")
+			error(f"bad line", line=line)
 	return result
 
 
