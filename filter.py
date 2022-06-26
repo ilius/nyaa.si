@@ -17,9 +17,11 @@ with open("name_english.json") as _file:
 	nameTranslation = json.load(_file)
 
 
-jsonMode = False
+outMode = ""
 if "--json" in sys.argv:
-	jsonMode = True
+	outMode = "json"
+elif "--json-pretty" in sys.argv:
+	outMode = "json-pretty"
 
 
 episodeTitleRE = re.compile(
@@ -28,10 +30,27 @@ episodeTitleRE = re.compile(
 )
 nameSeasonRE = re.compile("(.*) (S[0-9]+)")
 
+# TODO: replace episodeTitleRE with a list of expressions with named groups
 
 def error(msg):
-	if jsonMode:
-		print(json.dumps({"error": msg}, ensure_ascii=False))
+	if outMode == "json":
+		print(
+			json.dumps(
+				{"error": msg},
+				ensure_ascii=False,
+			),
+			file=sys.stderr,
+		)
+		return
+	if outMode == "json-pretty":
+		print(
+			json.dumps(
+				{"error": msg},
+				ensure_ascii=False,
+				indent="    ",
+			),
+			file=sys.stderr,
+		)
 		return
 	print(f"--- {msg}", file=sys.stderr)
 
@@ -198,8 +217,10 @@ def main():
 		name = formatTranslateName(name)
 		time_formatted = item["time_formatted"]
 		sub = item["sub"]
-		if jsonMode:
+		if outMode == "json":
 			print(json.dumps(item, ensure_ascii=False))
+		elif outMode == "json-pretty":
+			print(json.dumps(item, ensure_ascii=False, indent="    "))
 		else:
 			# print(f"{time_formatted} [{sub}] {name} - {epListStr}")
 			print(f"[{sub}] {name} - {epListStr}")
