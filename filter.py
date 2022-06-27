@@ -25,8 +25,15 @@ elif "--json-pretty" in sys.argv:
 
 
 episodeTitleRE = re.compile(
-	"(\[.*\] )?([^0-9]*?( S[0-9]+)? - )([0-9]+|S[0-9][0-9]E[0-9][0-9] )?"
-	"[- ]*[\\(\\[]?([0-9]+p)?[\\)\\]]?(.*)",
+	"(?P<sub>\[.*\] )?"
+	"(?P<name>[^0-9]*( S[0-9]+)?) - "
+	"(?P<ep>[0-9]+ |S[0-9][0-9]E[0-9][0-9] )?"
+	"(END )?"
+	"[- ]*"
+	"[\\(\\[]?"
+	"(?P<res>[0-9]+p)?"
+	"[\\)\\]]?"
+	"(?P<extra>.*)",
 )
 nameSeasonRE = re.compile("(.*) (S[0-9]+)")
 
@@ -76,12 +83,12 @@ def parsePage(htmlStr: str) -> "List[Dict[str, str]]":
 		if m is None:
 			error(f"bad title", title=title)
 			continue
-		groups = m.groups()
-		sub = groups[0].strip("[] ") if groups[0] else ""
-		name = groups[1].strip(" -")
-		ep = groups[3]
-		res = groups[4]
-		extra = groups[5].strip()
+		groups = m.groupdict()
+		sub = groups["sub"].strip("[] ") if groups["sub"] else ""
+		name = groups["name"].strip(" -")
+		ep = groups["ep"]
+		res = groups["res"]
+		extra = groups["extra"].strip()
 		if ep:
 			ep = ep.strip()
 			if ep.startswith("S01E"):
@@ -97,17 +104,20 @@ def parsePage(htmlStr: str) -> "List[Dict[str, str]]":
 		# timeStr = timeTd.text  # in UTC
 		timeStr = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M')
 
-		result.append({
+		row = {
 			"title": title,
 			"sub": sub,
 			"name": name,
+			"name_tr": nameTranslation.get(name, ""),
 			"ep": ep,
 			"res": res,
 			"extra": extra,
 			"time_formatted": timeStr,
 			"timestamp": timestamp,
-			"groups": groups,
-		})
+		}
+		# row["groups"] = groups
+		result.append(row)
+
 	return result
 
 def parseWatchedFile(fname):
@@ -160,6 +170,9 @@ def filterOutWatched(items, watched):
 	return result
 
 
+# TODO: read a list of regex patterns from ignore.txt
+
+
 def formatEpisodeSet(epSet):
 	if len(epSet) == 1:
 		return epSet.pop()
@@ -181,8 +194,9 @@ def getEpisodesByName(items):
 	return byName
 
 
-def formatTranslateName(name):
-	nameTr = nameTranslation.get(name, "")
+def formatTranslateName(item):
+	name = item["name"]
+	nameTr = item["name_tr"]
 	if nameTr:
 		return f"{name} ({nameTr})"
 
@@ -215,7 +229,6 @@ def main():
 
 	for name, (item, epSet) in sorted(byName.items()):
 		epListStr = formatEpisodeSet(epSet)
-		name = formatTranslateName(name)
 		time_formatted = item["time_formatted"]
 		sub = item["sub"]
 		if outMode == "json":
@@ -223,6 +236,7 @@ def main():
 		elif outMode == "json-pretty":
 			print(json.dumps(item, ensure_ascii=False, indent="    "))
 		else:
+			name = formatTranslateName(item)
 			# print(f"{time_formatted} [{sub}] {name} - {epListStr}")
 			print(f"[{sub}] {name} - {epListStr}")
 
