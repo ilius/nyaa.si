@@ -24,20 +24,52 @@ elif "--json-pretty" in sys.argv:
 	outMode = "json-pretty"
 
 
-episodeTitleRE = re.compile(
-	"(?P<sub>\[.*\] )?"
-	"(?P<name>[^0-9]*( S[0-9]+)?) - "
-	"(?P<ep>[0-9]+ |S[0-9][0-9]E[0-9][0-9] )?"
-	"(END )?"
-	"[- ]*"
-	"[\\(\\[]?"
-	"(?P<res>[0-9]+p)?"
-	"[\\)\\]]?"
-	"(?P<extra>.*)",
-)
+episodeTitleRE = [
+	re.compile(
+		"(?P<sub>\[.*\] )?"
+		"(?P<name>[^0-9()]+( S[0-9]+)?) - "
+		"(?P<ep>[0-9]+ |S[0-9][0-9]E[0-9][0-9] )?"
+		"(END )?"
+		"[- ]*"
+		"[\\(\\[]?"
+		"(?P<res>[0-9]+p)?"
+		"[\\)\\]]?"
+		"(?P<extra>.*)",
+	),
+	re.compile(
+		"(?P<sub>\[.*\] )?"
+		"(?P<name>[^0-9()]+ \\([^()]+\\)) - "
+		"(?P<ep>[0-9]+ |S[0-9][0-9]E[0-9][0-9] )?"
+		"(END )?"
+		"[- ]*"
+		"[\\(\\[]?"
+		"(?P<res>[0-9]+p)?"
+		"[\\)\\]]?"
+		"(?P<extra>.*)",
+	),
+	re.compile(
+		"(?P<sub>\[.*\] )?"
+		"(?P<name>[^0-9()]+) "
+		"(?P<ep>S[0-9][0-9]E[0-9][0-9] )"
+		"[- ]*"
+		"[\\(\\[]?"
+		"(?P<res>[0-9]+p)?"
+		"[\\)\\]]?"
+		"(?P<extra>.*)",
+	),
+	re.compile(
+		"(?P<sub>\[.*\] )?"
+		"(?P<name>[^\[\]]+) "
+		"[\\(\\[]?"
+		"(?P<res>[0-9]+p)?"
+		"[\\)\\]]?"
+		"(?P<extra>.*)",
+	),
+]
+
 nameSeasonRE = re.compile("(.*) (S[0-9]+)")
 
-# TODO: replace episodeTitleRE with a list of expressions with named groups
+
 
 
 def errorJson(msg, data, **kwargs):
@@ -63,9 +95,6 @@ def error(msg, **data):
 	print(f"--- {msg}: {valuesStr}", file=sys.stderr)
 
 
-# "[SubsPlease] Tomodachi Game - 09 (1080p) [BFD8B19A].mkv"
-# {"sub": "SubsPlease", "name": "Tomodachi Game",
-#  "ep": "09", "res": "1080p", "extra": " [BFD8B19A]", format: "mkv"}
 def parsePage(htmlStr: str) -> "List[Dict[str, str]]":
 	tree = fromstring(htmlStr)
 	result = []
@@ -79,14 +108,18 @@ def parsePage(htmlStr: str) -> "List[Dict[str, str]]":
 		except ValueError:
 			continue
 		title = a.attrib["title"]
-		m = episodeTitleRE.match(title)
-		if m is None:
+		m = None
+		for pattern in episodeTitleRE:
+			m = pattern.match(title)
+			if m is not None:
+				break
+		else:
 			error(f"bad title", title=title)
 			continue
 		groups = m.groupdict()
 		sub = groups["sub"].strip("[] ") if groups["sub"] else ""
 		name = groups["name"].strip(" -")
-		ep = groups["ep"]
+		ep = groups.get("ep", "")
 		res = groups["res"]
 		extra = groups["extra"].strip()
 		if ep:
