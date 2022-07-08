@@ -118,7 +118,7 @@ def parsePage(htmlStr: str) -> "List[Dict[str, str]]":
 			continue
 		groups = m.groupdict()
 		sub = groups["sub"].strip("[] ") if groups["sub"] else ""
-		name = groups["name"].strip(" -")
+		name = groups["name"].strip(" -!")
 		ep = groups.get("ep", "")
 		res = groups["res"]
 		extra = groups["extra"].strip()
