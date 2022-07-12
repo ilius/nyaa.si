@@ -1,3 +1,4 @@
 *.txt
-top.html
-top.json
+top*.html
+top*.json
+wget-log
