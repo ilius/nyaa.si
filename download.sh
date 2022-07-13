@@ -1,4 +1,4 @@
-URL='https://nyaa.si/?s=seeders&o=desc'
+URL='https://nyaa.iss.ink/?s=seeders&o=desc'
 DTIME=$(date +%Y-%m-%d-%H%M%S)
 
 if ! wget -O "top-$DTIME.html" "$URL" ; then
