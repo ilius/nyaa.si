@@ -155,24 +155,33 @@ def parsePage(htmlStr: str) -> "List[Dict[str, str]]":
 
 def parseWatchedFile(fname):
 	result = {}  # Dict[str, Optional[str]]
+	comments = {}  # Dict[str, str]
 	with open(fname) as _file:
 		for line in _file:
 			if line.startswith("#"):
 				continue
-			line = line.strip().split("#")[0]
+			line, _, comment = line.partition("#")
+			line = line.strip()
+			comment = comment.strip()
 			if not line:
 				continue
-			parts = line.split("\t")
+			parts = [
+				part
+				for part in line.split("\t")
+				if part
+			]
 			if len(parts) == 0:
 				continue
 			name = parts[0]
+			if comment:
+				comments[name] = comment
 			if len(parts) == 1:
 				result[name] = None
 				continue
 			if len(parts) != 2:
 				error("bad line", line=line)
 				continue
-			epRange = parts[1]
+			epRange = parts[1].lstrip("\t")
 			if epRange.startswith(".."):
 				end = epRange[2:].lstrip("E")
 				result[name] = end
@@ -183,7 +192,7 @@ def parseWatchedFile(fname):
 				result[name] = end
 				continue
 			error(f"bad line", line=line)
-	return result
+	return result, comments
 
 
 def filterOutWatched(items, watched):
@@ -252,9 +261,9 @@ def main():
 
 	watchedFilePath = "watched.txt"
 	if isfile(watchedFilePath):
-		watched = parseWatchedFile(watchedFilePath)
+		watched, comments = parseWatchedFile(watchedFilePath)
 	else:
-		watched = {}
+		watched, comments = {}, {}
 	# print(json.dumps(watched, indent="    "))
 
 	items = filterOutWatched(items, watched)
@@ -264,6 +273,9 @@ def main():
 		epListStr = formatEpisodeSet(epSet)
 		time_formatted = item["time_formatted"]
 		sub = item["sub"]
+		comment = comments.get(name)
+		if comment:
+			item["comment"] = comment
 		if outMode == "json":
 			print(json.dumps(item, ensure_ascii=False))
 		elif outMode == "json-pretty":
