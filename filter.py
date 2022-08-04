@@ -24,9 +24,11 @@ elif "--json-pretty" in sys.argv:
 	outMode = "json-pretty"
 
 
+subReS = "(?P<sub>\[[^\[\]]+\] )?"
+
 episodeTitleRE = [
 	re.compile(
-		"(?P<sub>\[.*\] )?"
+		subReS +
 		"(?P<name>[^0-9()]+( S[0-9]+)?) - "
 		"(?P<ep>[0-9]+ |S[0-9][0-9]E[0-9][0-9] )?"
 		"(END )?"
@@ -37,7 +39,7 @@ episodeTitleRE = [
 		"(?P<extra>.*)",
 	),
 	re.compile(
-		"(?P<sub>\[.*\] )?"
+		subReS +
 		"(?P<name>[^0-9()]+ \\([^()]+\\)) - "
 		"(?P<ep>[0-9]+ |S[0-9][0-9]E[0-9][0-9] )?"
 		"(END )?"
@@ -48,7 +50,7 @@ episodeTitleRE = [
 		"(?P<extra>.*)",
 	),
 	re.compile(
-		"(?P<sub>\[.*\] )?"
+		subReS +
 		"(?P<name>[^0-9()]+) "
 		"(?P<ep>S[0-9][0-9]E[0-9][0-9] )"
 		"[- ]*"
@@ -58,7 +60,7 @@ episodeTitleRE = [
 		"(?P<extra>.*)",
 	),
 	re.compile(
-		"(?P<sub>\[.*\] )?"
+		subReS +
 		"(?P<name>[^\[\]]+) "
 		"[\\(\\[]?"
 		"(?P<res>[0-9]+p)?"
@@ -139,7 +141,7 @@ def parsePage(htmlStr: str) -> "List[Dict[str, str]]":
 
 		row = {
 			"title": title,
-			"sub": sub,
+			"sub": set([sub]),
 			"name": name,
 			"name_tr": nameTranslation.get(name, ""),
 			"ep": ep,
@@ -229,7 +231,10 @@ def getEpisodesByName(items):
 	for item in items:
 		name = item["name"]
 		ep = item["ep"]
-		if name not in byName:
+		if name in byName:
+			item0 = byName[name][0]
+			item0["sub"].update(item["sub"])
+		else:
 			byName[name] = (item, set([ep]))
 			continue
 		byName[name][1].add(ep)
@@ -266,14 +271,23 @@ def main():
 		watched, comments = {}, {}
 	# print(json.dumps(watched, indent="    "))
 
-	items = filterOutWatched(items, watched)
+	if "--all" not in sys.argv[1:]:
+		items = filterOutWatched(items, watched)
+
 	byName = getEpisodesByName(items)
 
 	for name, (item, epSet) in sorted(byName.items()):
 		epListStr = formatEpisodeSet(epSet)
 		time_formatted = item["time_formatted"]
-		sub = item["sub"]
-		comment = comments.get(name)
+		subList = list(sorted(item["sub"]))
+		subStr = " | ".join(subList)
+		# item["sub"] = subList
+		item["sub"] = subStr
+		sub = subStr
+		name_tr = item["name_tr"]
+		comment = comments.get(name, "")
+		if comment == name_tr:
+			comment = ""
 		if comment:
 			item["comment"] = comment
 		if outMode == "json":
