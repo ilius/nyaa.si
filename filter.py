@@ -26,45 +26,46 @@ elif "--json-pretty" in sys.argv:
 
 subReS = "(?P<sub>\[[^\[\]]+\] )?"
 
+resReS = "(" + "|".join([
+	"(?P<res>[\\(\\[]([A-Z ]*?[0-9]+p[A-Z ]*?)[\\)\\]])",
+	"(?P<res2>[0-9]+p)",
+	"(?P<res3>\([^()]*?[0-9]+x[0-9]+[^()]*?)",
+]) + ")?"
+
+ignorePostEpSuffix = "(END )?(\[?Uncensored\]? )?"
+
 episodeTitleRE = [
 	re.compile(
 		subReS +
 		"(?P<name>[^0-9()]+( S[0-9]+)?) - "
-		"(?P<ep>[0-9]+ |S[0-9][0-9]E[0-9][0-9] )?"
-		"(END )?"
-		"[- ]*"
-		"[\\(\\[]?"
-		"(?P<res>[0-9]+p)?"
-		"[\\)\\]]?"
+		"(?P<ep>[0-9]+ |S[0-9][0-9]E[0-9][0-9] )?" +
+		ignorePostEpSuffix +
+		"[- ]*" +
+		resReS +
 		"(?P<extra>.*)",
 	),
 	re.compile(
 		subReS +
 		"(?P<name>[^0-9()]+ \\([^()]+\\)) - "
-		"(?P<ep>[0-9]+ |S[0-9][0-9]E[0-9][0-9] )?"
-		"(END )?"
-		"[- ]*"
-		"[\\(\\[]?"
-		"(?P<res>[0-9]+p)?"
-		"[\\)\\]]?"
+		"(?P<ep>[0-9]+ |S[0-9][0-9]E[0-9][0-9] )?" +
+		ignorePostEpSuffix +
+		"[- ]*" +
+		resReS +
 		"(?P<extra>.*)",
 	),
 	re.compile(
 		subReS +
 		"(?P<name>[^0-9()]+) "
 		"(?P<ep>S[0-9][0-9]E[0-9][0-9] )"
-		"[- ]*"
-		"[\\(\\[]?"
-		"(?P<res>[0-9]+p)?"
-		"[\\)\\]]?"
+		"[- ]*" +
+		ignorePostEpSuffix +
+		resReS +
 		"(?P<extra>.*)",
 	),
 	re.compile(
 		subReS +
-		"(?P<name>[^\[\]]+) "
-		"[\\(\\[]?"
-		"(?P<res>[0-9]+p)?"
-		"[\\)\\]]?"
+		"(?P<name>[^\[\]]+) " +
+		resReS +
 		"(?P<extra>.*)",
 	),
 ]
@@ -122,7 +123,16 @@ def parsePage(htmlStr: str) -> "List[Dict[str, str]]":
 		sub = groups["sub"].strip("[] ") if groups["sub"] else ""
 		name = groups["name"].strip(" -!")
 		ep = groups.get("ep", "")
-		res = groups["res"]
+
+		res = "unknown"
+		for key in ("res", "res2", "res3"):
+			if groups[key]:
+				res = groups[key].strip("[]()")
+				break
+
+		#if res == "unknown":
+		#	error("unknown res", title=title, groups=groups)
+
 		extra = groups["extra"].strip()
 		if ep:
 			ep = ep.strip()
@@ -145,7 +155,7 @@ def parsePage(htmlStr: str) -> "List[Dict[str, str]]":
 			"name": name,
 			"name_tr": nameTranslation.get(name, ""),
 			"ep": ep,
-			"res": res,
+			"res": set([res]),
 			"extra": extra,
 			"time_formatted": timeStr,
 			"timestamp": timestamp,
@@ -226,18 +236,28 @@ def formatEpisodeSet(epSet):
 	return epList[0] + ".." + epList[-1]
 
 
-def getEpisodesByName(items):
+def organizeByName(items):
 	byName = {}
 	for item in items:
 		name = item["name"]
 		ep = item["ep"]
-		if name in byName:
-			item0 = byName[name][0]
-			item0["sub"].update(item["sub"])
-		else:
+
+		if name not in byName:
 			byName[name] = (item, set([ep]))
 			continue
+
+		item0 = byName[name][0]
+		if item0["ep"] == ep:
+			item0["sub"].update(item["sub"])
+			item0["res"].update(item["res"])
+			item0["extra"] = "\n".join([
+				x["extra"]
+				for x in (item0, item)
+				if x["extra"]
+			])
+
 		byName[name][1].add(ep)
+
 	return byName
 
 
@@ -274,16 +294,21 @@ def main():
 	if "--all" not in sys.argv[1:]:
 		items = filterOutWatched(items, watched)
 
-	byName = getEpisodesByName(items)
+	byName = organizeByName(items)
 
 	for name, (item, epSet) in sorted(byName.items()):
 		epListStr = formatEpisodeSet(epSet)
 		time_formatted = item["time_formatted"]
+
 		subList = list(sorted(item["sub"]))
 		subStr = " | ".join(subList)
-		# item["sub"] = subList
 		item["sub"] = subStr
 		sub = subStr
+
+		resList = list(sorted(item["res"]))
+		resStr = " | ".join(resList)
+		item["res"] = resStr
+
 		name_tr = item["name_tr"]
 		comment = comments.get(name, "")
 		if comment == name_tr:
