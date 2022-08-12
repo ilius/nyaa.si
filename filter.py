@@ -203,6 +203,10 @@ def parseWatchedFile(fname):
 				end = endStr.lstrip("E")
 				result[name] = end
 				continue
+			if epRange.startswith("E"):
+				ep = epRange[1:]
+				result[name] = ep
+				continue
 			error(f"bad line", line=line)
 	return result, comments
 
