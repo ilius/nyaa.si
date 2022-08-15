@@ -190,6 +190,8 @@ def parseWatchedFile(fname):
 			if len(parts) == 1:
 				result[name] = None
 				continue
+			if name in result and result[name] is None:
+				continue
 			if len(parts) != 2:
 				error("bad line", line=line)
 				continue
