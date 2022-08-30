@@ -1,7 +1,7 @@
 URL='https://nyaa.si/?s=seeders&o=desc'
 DTIME=$(date +%Y-%m-%d-%H%M%S)
 
-if ! wget -O "top-$DTIME.html" "$URL" ; then
+if ! wget -O "top-$DTIME.html" "$URL" --compression=auto ; then
 	rm "top-$DTIME.html"
 	exit 1
 fi
