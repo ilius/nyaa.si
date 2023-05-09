@@ -1,0 +1,12 @@
+URL='https://nyaa.si/?s=seeders&o=desc'
+DTIME=$(date +%Y-%m-%d-%H%M%S)
+
+if ! curl -sH 'Accept-encoding: gzip' "$URL" -x $HTTP_PROXY | \
+gunzip - > "top-$DTIME.html" ; then
+	rm "top-$DTIME.html"
+	exit 1
+fi
+
+cp "top-$DTIME.html" top.html
+
+python ./filter.py --json | jq . --tab > top.json

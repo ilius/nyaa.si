@@ -16,7 +16,7 @@ while read -r line ; do
 		echo "$last_line,"
 	fi
 	last_line=$line
-done < <(./filter.py --json "$@")
+done < <(python ./filter.py --json "$@")
 
 echo "$last_line"
 echo "]"

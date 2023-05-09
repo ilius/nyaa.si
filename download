@@ -8,4 +8,4 @@ fi
 
 ln -sf "top-$DTIME.html" top.html
 
-./filter-json-pretty.sh > top.json
+./filter-json-pretty > top.cjson
